@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """
 Simple CLI to track what I need to do, what I have done, and what I'm currently working on.
 
@@ -48,22 +49,21 @@ task-cli list in-progress
 from datetime import datetime
 import json
 import os
-
+import sys
 
 DATA_FILE_PATH = 'data.json'
 
 
-def get_data_from_file() -> dict:
+def get_data_from_file(data=DATA_FILE_PATH) -> dict:
     # Create data file if it does not exist
-    if not os.path.exists(DATA_FILE_PATH):
+    if not os.path.exists(data):
         write_data_to_file(dict())
-    with open(DATA_FILE_PATH) as f:
+    with open(data) as f:
         data_dict = json.load(f)
         return data_dict
 
-def write_data_to_file(data: dict):
-    with open(DATA_FILE_PATH, 'w') as f:
-        # print(data)
+def write_data_to_file(data: dict, data_file_path=DATA_FILE_PATH):
+    with open(data_file_path, 'w') as f:
         f.write(json.dumps(data))
 
 def get_tasks_by_status(status):
@@ -78,6 +78,7 @@ def get_tasks_by_status(status):
 def list_all_tasks():
     data = get_data_from_file()
     print(data)
+    return data
 
 
 def add_task(description="None", status="to-do") -> dict:
@@ -97,7 +98,7 @@ def add_task(description="None", status="to-do") -> dict:
 def delete_task(remove_task_id: str):
     data_dict = get_data_from_file()
     if remove_task_id not in data_dict:
-        print(f"Error: Task with ID {remove_task_id} not in data file")
+        print(f"Error: Task with ID {remove_task_id} is not in the tasks list")
         return
     data_dict.pop(remove_task_id)
     new_data_dict = dict()
@@ -109,19 +110,70 @@ def delete_task(remove_task_id: str):
     write_data_to_file(new_data_dict)
     return new_data_dict
 
+def update_task_description(task_id, description) -> dict:
+    data_dict = get_data_from_file()
+    if task_id not in data_dict:
+        print(f"Error, {task_id} is not in the tasks list")
+        return data_dict
+    data_dict[task_id]['description'] = description
+    write_data_to_file(data_dict)
+    return data_dict
 
+def update_task_status(task_id: str, status: str) -> dict:
+    data_dict = get_data_from_file()
+    if task_id not in data_dict:
+        print(f"Error, {task_id} is not in the tasks list")
+        return data_dict
+    data_dict[task_id]['status'] = status
+    write_data_to_file(data_dict)
+    return data_dict
+
+def parse_and_execute(args: list) -> dict:
+    if not args:
+        print_help()
+        return {}
+    supported_arguments = {"add", "update" "delete", "mark-in-progress", "mark-done", "list"}
+    command = args[0]
+    if command not in supported_arguments:
+        print(help)
+        return {}
+    if len(args) == 1 and command == "list":
+            return list_all_tasks()
+    elif len(args) == 2:
+        if command == "add":
+            return add_task(args[1])
+        elif command == "delete":
+            if validate_int_string(args[1]):
+                return delete_task(args[1])
+        elif command == "mark-in-progress":
+            if validate_int_string(args[1]):
+                return update_task_status(args[1], "in-progress")
+        elif command == "mark-done":
+            if validate_int_string(args[1]):
+                return update_task_status(args[1], "done")
+        elif command == "list":
+            status = args[1]
+            if status in ["done", "to-do", "in-progress"]:
+                return get_tasks_by_status("done")
+    print_help()
+    return {}
+
+
+def validate_int_string(s) -> bool:
+    try:
+        int(s)
+    except TypeError:
+        return False
+    return True
+
+def print_help():
+    print("help")
 
 def main():
-    # data = get_data_from_json_file()
-    add_task("laundry")
-    add_task("groceries", "in-progress")
-    add_task("homework")
-    add_task("work")
-    add_task("study")
-    list_all_tasks()
-    list_all_tasks()
-    delete_task("3")
-    os.remove("data.json")
+    """
+    """
+    parse_and_execute(sys.argv[1:])
+
 
 if __name__ == "__main__":
     main()
