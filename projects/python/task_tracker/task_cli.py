@@ -6,25 +6,17 @@ This application accepts user actions and inputs as arguments, and stores the ta
 JSON file. The user should be able to:
 
 - Add, update, and delete tasks
-- Mark a task as in progress or done
+- Mark a task as in-progress or done
 - List all tasks that are done
 - List all tasks that are not done
 - List all tasks that are in progress
 
-Each task should have the following properties:
+Each task has the following properties:
 - id: A unique identifier for the task
 - description: A short description of the task
 - status: The status of the task (to-do, in-progress, done)
 - createdAt: The date and time when the task was created
 - updatedAt: The date and time when the task was last updated
-
-Constraints:
-- Use positional arguments in CLI to accept user inputs
-- Use a JSON file to store the tasks in the current directory
-- The JSON file should be created if it does not exist
-- Use the native file system module to interact with the JSON file
-- Do not use external libraries or frameworks to build this project
-- Ensure to handle errors and edge cases gracefully
 
 # Adding a new task
 task-cli add "Buy groceries"
@@ -54,11 +46,12 @@ import sys
 DATA_FILE_PATH = 'data.json'
 
 
-def get_data_from_file(data=DATA_FILE_PATH) -> dict:
+def get_data_from_file(file_path=DATA_FILE_PATH) -> dict:
+    """Read data from json file"""
     # Create data file if it does not exist
-    if not os.path.exists(data):
+    if not os.path.exists(file_path):
         write_data_to_file(dict())
-    with open(data) as f:
+    with open(file_path) as f:
         data_dict = json.load(f)
         return data_dict
 
@@ -77,11 +70,11 @@ def get_tasks_by_status(status):
 
 def list_all_tasks():
     data = get_data_from_file()
-    print(data)
+    __print_tasks(data)
     return data
 
 
-def add_task(description="None", status="to-do") -> dict:
+def add_task(description="None", status="todo") -> dict:
     datetime_now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     data = get_data_from_file()
     task_id = len(data)
@@ -92,6 +85,7 @@ def add_task(description="None", status="to-do") -> dict:
         "updatedAt": datetime_now
     }
     write_data_to_file(data)
+    print(f"Successfully created task with ID {task_id}")
     return data
 
 
@@ -101,7 +95,9 @@ def delete_task(remove_task_id: str):
         print(f"Error: Task with ID {remove_task_id} is not in the tasks list")
         return
     data_dict.pop(remove_task_id)
+    print(f"Successfully removed task with task ID {remove_task_id}")
     new_data_dict = dict()
+    # Recalculate each task_id
     for task_id, task_map in data_dict.items():
         task_id = int(task_id)
         if task_id > int(remove_task_id):
@@ -112,10 +108,12 @@ def delete_task(remove_task_id: str):
 
 def update_task_description(task_id, description) -> dict:
     data_dict = get_data_from_file()
+    print("HEELLLOOO")
     if task_id not in data_dict:
         print(f"Error, {task_id} is not in the tasks list")
         return data_dict
     data_dict[task_id]['description'] = description
+    print(f"Successfully updated task_id {task_id} with description: {description}")
     write_data_to_file(data_dict)
     return data_dict
 
@@ -128,51 +126,70 @@ def update_task_status(task_id: str, status: str) -> dict:
     write_data_to_file(data_dict)
     return data_dict
 
-def parse_and_execute(args: list) -> dict:
+def execute_task_cli(args: list):
+    """Parses commandline arguments"""
     if not args:
         print_help()
-        return {}
-    supported_arguments = {"add", "update" "delete", "mark-in-progress", "mark-done", "list"}
     command = args[0]
-    if command not in supported_arguments:
-        print(help)
-        return {}
     if len(args) == 1 and command == "list":
-            return list_all_tasks()
+        return list_all_tasks()
     elif len(args) == 2:
         if command == "add":
             return add_task(args[1])
         elif command == "delete":
-            if validate_int_string(args[1]):
+            if is_str_an_int(args[1]):
                 return delete_task(args[1])
         elif command == "mark-in-progress":
-            if validate_int_string(args[1]):
+            if is_str_an_int(args[1]):
                 return update_task_status(args[1], "in-progress")
         elif command == "mark-done":
-            if validate_int_string(args[1]):
+            if is_str_an_int(args[1]):
                 return update_task_status(args[1], "done")
         elif command == "list":
             status = args[1]
-            if status in ["done", "to-do", "in-progress"]:
-                return get_tasks_by_status("done")
+            if status in ["done", "todo", "in-progress"]:
+                return get_tasks_by_status(status)
+    elif len(args) == 3:
+        if command == "update":
+            if is_str_an_int(args[1]):
+                return update_task_description(args[1], args[2])
     print_help()
-    return {}
 
 
-def validate_int_string(s) -> bool:
+def is_str_an_int(s) -> bool:
+    """Checks if a string can be converted to an int. This is used to validate task_id strings"""
     try:
         int(s)
     except TypeError:
         return False
+    except ValueError:
+        return False
     return True
 
 def print_help():
-    print("help")
+    help_string = ("Usage: \n task-cli <command> \n\nAvailable Commands: \n "
+                   "add \"<description>\" \t\tAdd a new task\n "
+                   "delete <id> \t\t\tDelete task \n "
+                   "list [done|todo|in-progress] \tList tasks \n "
+                   "mark-in-progress <id>\t\tChange status to in-progress\n "
+                   "mark-done <id>\t\t\tChange status to done\n "
+                   "update <id> \"description\" \tUpdate task description\n"
+                   )
+    print(help_string)
+
+def __print_tasks(data_dict) -> bool:
+    if not data_dict:
+        print("The tasks list is empty")
+        return False
+    for task_id, task_map in data_dict.items():
+        print(f"Task ID: {task_id}")
+        for task, value in task_map.items():
+            print(task + ": " + value)
+        print("")
+    return True
 
 def main():
-    """
-    """
-    parse_and_execute(sys.argv[1:])
+    execute_task_cli(sys.argv[1:])
 
 
 if __name__ == "__main__":
